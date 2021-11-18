@@ -12,22 +12,23 @@ import pixel_display.two_color show *
 
 import ssd1306 show *
 
-MS ::= 32
+MOISTURE_SENSOR ::= 32
+
+SCL ::= 22
+SDA ::= 21
 
 main:
-  //Set up I2C bus for OLED display
-  scl := gpio.Pin 22
-  sda := gpio.Pin 21
+  // Set up the I2C bus for the OLED display.
   bus := i2c.Bus
-    --sda=sda
-    --scl=scl
+      --sda=gpio.Pin SDA
+      --scl=gpio.Pin SCL
 
   devices := bus.scan
-  if not devices.contains 0x3c: throw "No SSD1306 display found"
-  
+  if not devices.contains SSD1306_ID: throw "No SSD1306 display found"
+
   oled :=
     TwoColorPixelDisplay
-      SSD1306 (bus.device 0x3c)
+      SSD1306 (bus.device SSD1306_ID)
 
   oled.background = BLACK
   sans := Font.get "sans10"
@@ -36,17 +37,14 @@ main:
   sans24b_context := sans_context.with --font=sans24b --alignment=TEXT_TEXTURE_ALIGN_RIGHT
   oled_text := (oled as any).text sans24b_context 130 55 "0.0" //"oled as any" is a hack
 
-  val := 0.0000
-  per := 0.00
-  pin := gpio.Pin MS
+  pin := gpio.Pin MOISTURE_SENSOR
   sensor := adc.Adc pin
 
-  while true:    
-    val=sensor.get
+  while true:
+    val := sensor.get
+    per := (-41.66666667*val) + 145.833333334 // Linear conversion to percentage.
     oled.text sans_context 10 20 "Moisture Reading"
     print "Moisture: $(%.2f per) %"
-    per = (-41.66666667*val) + 145.833333334 //linear conversion to percentage
     oled_text.text = "$(%.2f per)%"
     oled.draw
     sleep --ms=500
-    
